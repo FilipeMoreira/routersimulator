@@ -17,18 +17,18 @@ class Package():
         elif self.type == 1:
             generateVoicePackage()
 
-    def generateVoicePackage():
+    def generateVoicePackage(self):
         self.size = 512
 
-    def generateDataPackage():
+    def generateDataPackage(self):
         self.size = int(fL(random.uniform(0,1500)))
 
-    def deltaDeDirac(x,a):
+    def deltaDeDirac(self, x, a):
         if x == a:
             return 1
         return 0
 
-    def degrau(x,a):
+    def degrau(self, x ,a):
         if (x-a) >= 0:
             return 1
         return 0
