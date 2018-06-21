@@ -1,7 +1,7 @@
 from eventQueue import EventQueue
 from event import Event
 from queue import Queue
-
+from eventType import EventType
 class Simulator:
 
     def __init__(self, _arrivalRate):
@@ -10,13 +10,13 @@ class Simulator:
     def simulate(self, usage):
 
         eventQueue = EventQueue()
-        evt = Event(1, 200, 1)
+        evt = Event(1, 200, EventType.CREATE_VOICE_PACKAGE)
         eventQueue.add(evt)
-        evt = Event(2, 340, 1)
+        evt = Event(2, 340, EventType.CREATE_VOICE_PACKAGE)
         eventQueue.add(evt)
-        evt = Event(3, 202, 1)
+        evt = Event(3, 202, EventType.CREATE_VOICE_PACKAGE)
         eventQueue.add(evt)
-        evt = Event(4, 220, 1)
+        evt = Event(4, 220, EventType.CREATE_VOICE_PACKAGE)
         eventQueue.add(evt)
 
         eventQueue.print()
