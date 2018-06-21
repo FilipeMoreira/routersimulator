@@ -2,8 +2,10 @@ from package import Package
 from simulator import Simulator
 
 def main():
-
-    sim = Simulator(None)
-    sim.simulate(0.10)
+    # a taxa vai variar de 0.1 até 0.7 em incrementos de 0.1
+    # utilização = taxa
+        
+    sim = Simulator(0.10)
+    sim.simulate()
 
 main()
