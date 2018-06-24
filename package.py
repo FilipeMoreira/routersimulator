@@ -1,4 +1,5 @@
 import random
+from packageType import PackageType
 
 class Package():
 
@@ -12,16 +13,18 @@ class Package():
 
     def __init__(self, _type):
         self.type = _type
-        if self.type == 0:
-            generateDataPackage()
-        elif self.type == 1:
-            generateVoicePackage()
+        if self.type == PackageType.DATA_PACKAGE:
+            self.size = self.generateDataPackage()
+        elif self.type == PackageType.VOICE_PACKAGE:
+            self.size = self.generateVoicePackage()
 
     def generateVoicePackage(self):
-        self.size = 512
+        # 512 bits
+        return 512
 
     def generateDataPackage(self):
-        self.size = int(fL(random.uniform(0,1500)))
+        # 64 ~ 1500 bytes
+        return self.fL(random.uniform(64,1500))
 
     def deltaDeDirac(self, x, a):
         if x == a:
@@ -33,5 +36,6 @@ class Package():
             return 1
         return 0
 
-    def fL(x):
-        return (0.3*deltaDeDirac(x,64) + 0.1*deltaDeDirac(x,512) + 0.3*deltaDeDirac(x,1500) + ((0.3/1436)*(degrau(x,64)-degrau(x,1500))))
+    def fL(self, x):
+        packageSizeInBytes = (0.3*self.deltaDeDirac(x,64) + 0.1*self.deltaDeDirac(x,512) + 0.3*self.deltaDeDirac(x,1500) + ((0.3/1436)*(self.degrau(x,64)-self.degrau(x,1500))))
+        return packageSizeInBytes * 8

@@ -5,11 +5,11 @@ class EventQueue:
     def __init__(self):
         self.queue = []
 
-    def peek():
+    def peek(self):
         if len(self.queue) > 0:
             return self.queue[0]
 
-    def pop():
+    def pop(self):
         if len(self.queue) <= 0:
             return None
         return self.queue.pop(0)
@@ -18,6 +18,9 @@ class EventQueue:
         self.queue.append(item)
         self.sort(0,len(self.queue)-1)
     
+    def length(self):
+        return len(self.queue)
+
     def sort(self, lo, hi):
         i = lo
         j = hi
