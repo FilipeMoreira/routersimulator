@@ -1,5 +1,6 @@
 import random
 from packageType import PackageType
+import numpy as np
 
 class Package():
 
@@ -26,16 +27,19 @@ class Package():
         # 64 ~ 1500 bytes
         return self.fL(random.uniform(64,1500))
 
-    def deltaDeDirac(self, x, a):
+    def diracDelta(self, x, a):
         if x == a:
-            return 1
+            return a
         return 0
 
-    def degrau(self, x ,a):
+    def stepFunction(self, x ,a):
         if (x-a) >= 0:
             return 1
         return 0
 
     def fL(self, x):
-        packageSizeInBytes = (0.3*self.deltaDeDirac(x,64) + 0.1*self.deltaDeDirac(x,512) + 0.3*self.deltaDeDirac(x,1500) + ((0.3/1436)*(self.degrau(x,64)-self.degrau(x,1500))))
+        # Escolhe um dos 3 tamanhos, caso não consiga, escolhe um tamanho usando a uniforme
+        packageSizeInBytes = np.random.choice([64,512,1500,np.random.uniform(64,1500)], p=[0.3, 0.1, 0.3, 0.3])
         return packageSizeInBytes * 8
+        # packageSizeInBytes = (0.3*self.diracDelta(x,64) + 0.1*self.diracDelta(x,512) + 0.3*self.diracDelta(x,1500) + ((0.3/1436)*(self.stepFunction(x,64)-self.stepFunction(x,1500))))
+        # return packageSizeInBytes * 8
