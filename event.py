@@ -10,7 +10,6 @@ class Event:
     # 4 - Pacote de voz é servido
     # 5 - Período de silêncio (650ms)
 
-    def __init__(self, _eid, _eventTime, _type):
-        self.eid = _eid
+    def __init__(self, _eventTime, _type):
         self.eventTime = _eventTime
         self.type = _type
