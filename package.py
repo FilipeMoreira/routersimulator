@@ -27,19 +27,8 @@ class Package():
         # 64 ~ 1500 bytes
         return self.fL(random.uniform(64,1500))
 
-    def diracDelta(self, x, a):
-        if x == a:
-            return a
-        return 0
-
-    def stepFunction(self, x ,a):
-        if (x-a) >= 0:
-            return 1
-        return 0
-
     def fL(self, x):
         # Escolhe um dos 3 tamanhos, caso não consiga, escolhe um tamanho usando a uniforme
         packageSizeInBytes = np.random.choice([64,512,1500,np.random.uniform(64,1500)], p=[0.3, 0.1, 0.3, 0.3])
         return packageSizeInBytes * 8
-        # packageSizeInBytes = (0.3*self.diracDelta(x,64) + 0.1*self.diracDelta(x,512) + 0.3*self.diracDelta(x,1500) + ((0.3/1436)*(self.stepFunction(x,64)-self.stepFunction(x,1500))))
-        # return packageSizeInBytes * 8
+     

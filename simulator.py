@@ -14,6 +14,7 @@ class Simulator:
 
     def __init__(self, _utilization):
         self.utilization = _utilization
+        self.transmissions = []
 
     def simulate(self):
         
@@ -23,29 +24,29 @@ class Simulator:
         # evt = Event(np.random.exponential(1/self.utilization), EventType.CREATE_DATA_PACKAGE)
         # eventQueue.add(evt)
         t = 0
-        simulationTime = 100
-        Transmissions = []
+        simulationTime = 1000
         while t < simulationTime:
             package = Package(PackageType.DATA_PACKAGE)
             serviceTime = package.size/constants.CHANNEL_SIZE
 
-            if(len(Transmissions) == 0):
+            if(len(self.transmissions) == 0):
                 # Usando o servico do primeiro cliente para calcular a taxa de chegada
                 arrivalRate = self.utilization/serviceTime
                 arrivalTime = np.random.exponential(1/arrivalRate)
                 serviceStartTime = arrivalTime
             else:
-                arrivalRate = self.utilization/self.packageServiceAverage(Transmissions)
+                arrivalRate = self.utilization/self.packageServiceAverage()
                 arrivalTime += np.random.exponential(1/arrivalRate)
-                serviceStartTime = max(arrivalTime, Transmissions[-1].endServiceTime)
+                serviceStartTime = max(arrivalTime, self.transmissions[-1].endServiceTime)
             
-            print("Chegada: ", arrivalTime)
-            print("Serviço: ", serviceTime)
             # time.sleep(1)
-            Transmissions.append(Transmission(arrivalTime, serviceStartTime, serviceTime))
+            nextTransmission = Transmission(arrivalTime, serviceStartTime, serviceTime)
+            # nextTransmission.log()
+            self.transmissions.append(nextTransmission)
 
             t = arrivalTime
-        print("Packages sent ", len(Transmissions))
+        print("Packages sent ", len(self.transmissions))
+        print("Waiting time ", self.getAverageWaitingTime())
         
         ################
         # MMIQ EXAMPLE #
@@ -63,12 +64,12 @@ class Simulator:
 		# #increment clock till next end of service
 		# t=arrival_date
 
-    def packageServiceAverage(self, transmissions):
-        if(len(transmissions) > 0):
+    def packageServiceAverage(self):
+        if(len(self.transmissions) > 0):
             serviceTimeSum = 0
-            for t in transmissions:
+            for t in self.transmissions:
                 serviceTimeSum += t.serviceTime
-            return serviceTimeSum/len(transmissions)
+            return serviceTimeSum/len(self.transmissions)
         return 0
 
     def getAverageServiceTime(self, spackageType):
@@ -77,8 +78,13 @@ class Simulator:
     def getAverageTotalTime(self, packageType):
         pass
 
-    def getAverageWaitingTime(self, packageType):
-        pass
+    def getAverageWaitingTime(self):
+        if(len(self.transmissions) > 0):
+            waitingSum = 0
+            for t in self.transmissions:
+                waitingSum += t.waitTime
+            return waitingSum/len(self.transmissions)
+        return 0
 
     def getAverageLineLength(self, packageType):
         pass
