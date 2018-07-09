@@ -1,10 +1,10 @@
 import random
+import constants
 from packageType import PackageType
+
 import numpy as np
 
 class Package():
-
-    #
     #   Classe de pacotes
     #       Tipo Dados: 
     #           Tamanho: 64 - 1500 B
@@ -15,17 +15,19 @@ class Package():
     def __init__(self, _type):
         self.type = _type
         if self.type == PackageType.DATA_PACKAGE:
-            self.size = self.generateDataPackage()
+            self.generate_data_package
         elif self.type == PackageType.VOICE_PACKAGE:
-            self.size = self.generateVoicePackage()
+            self.generate_voice_package
 
-    def generateVoicePackage(self):
+    def generate_voice_package(self):
         # 512 bits
-        return 512
+        self.size = constants.VOICE_PACKAGE_SIZE
+        self.arrival_rate = constants.VOICE_ARRIVAL_RATE
 
-    def generateDataPackage(self):
+    def generate_data_package(self):
         # 64 ~ 1500 bytes
-        return self.fL(random.uniform(64,1500))
+        self.size = self.fL(random.uniform(64,1500))
+        self.arrival_rate = self.size/constants.CHANNEL_SIZE
 
     def fL(self, x):
         # Escolhe um dos 3 tamanhos, caso não consiga, escolhe um tamanho usando a uniforme

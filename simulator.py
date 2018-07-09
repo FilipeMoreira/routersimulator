@@ -24,7 +24,9 @@ class Simulator:
         # evt = Event(np.random.exponential(1/self.utilization), EventType.CREATE_DATA_PACKAGE)
         # eventQueue.add(evt)
         t = 0
-        simulationTime = 1000
+        simulationTime = 100
+        Transmission(0.1,0.14,0.10)
+        exit(-1)
         while t < simulationTime:
             package = Package(PackageType.DATA_PACKAGE)
             serviceTime = package.size/constants.CHANNEL_SIZE
@@ -35,7 +37,7 @@ class Simulator:
                 arrivalTime = np.random.exponential(1/arrivalRate)
                 serviceStartTime = arrivalTime
             else:
-                arrivalRate = self.utilization/self.packageServiceAverage()
+                arrivalRate = self.utilization/self.average_service_time()
                 arrivalTime += np.random.exponential(1/arrivalRate)
                 serviceStartTime = max(arrivalTime, self.transmissions[-1].endServiceTime)
             
@@ -46,7 +48,7 @@ class Simulator:
 
             t = arrivalTime
         print("Packages sent ", len(self.transmissions))
-        print("Waiting time ", self.getAverageWaitingTime())
+        print("Waiting time ", self.average_wait_time())
         
         ################
         # MMIQ EXAMPLE #
@@ -64,7 +66,7 @@ class Simulator:
 		# #increment clock till next end of service
 		# t=arrival_date
 
-    def packageServiceAverage(self):
+    def average_service_time(self):
         if(len(self.transmissions) > 0):
             serviceTimeSum = 0
             for t in self.transmissions:
@@ -78,7 +80,7 @@ class Simulator:
     def getAverageTotalTime(self, packageType):
         pass
 
-    def getAverageWaitingTime(self):
+    def average_wait_time(self):
         if(len(self.transmissions) > 0):
             waitingSum = 0
             for t in self.transmissions:
