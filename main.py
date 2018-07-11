@@ -8,7 +8,7 @@ def main():
     # Nao entendi a utilização do pacote de voz
         
     # sim = Simulator(0.10)
-    print("Utilisation ", sys.argv[1])
+    print("Utilization ", sys.argv[1])
     sim = Simulator(float(sys.argv[1]))
     sim.simulate()
 

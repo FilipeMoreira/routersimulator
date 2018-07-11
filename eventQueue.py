@@ -15,8 +15,20 @@ class EventQueue:
         return self.queue.pop(0)
     
     def add(self, item):
-        self.queue.append(item)
-        self.sort(0,len(self.queue)-1)
+        target_index = 0
+        inserted = 0
+        for index, evt in enumerate(self.queue):
+            if evt.eventTime >= item.eventTime:
+                self.queue.insert(index, item)
+                inserted = 1
+                break
+        if inserted == 0:
+            self.queue.append(item)
+        # self.queue.append(item)
+        # self.sort(0,len(self.queue)-1)
+
+    def get(self, index):
+        return self.queue[index]
     
     def length(self):
         return len(self.queue)

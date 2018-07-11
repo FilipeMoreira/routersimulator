@@ -7,7 +7,7 @@ from queue import Queue
 from packageType import PackageType
 from eventType import EventType 
 from package import Package
-from transmission import Transmission
+from transmission import *
 
 
 class Simulator:
@@ -24,31 +24,131 @@ class Simulator:
         # evt = Event(np.random.exponential(1/self.utilization), EventType.CREATE_DATA_PACKAGE)
         # eventQueue.add(evt)
         t = 0
-        simulationTime = 100
-        Transmission(0.1,0.14,0.10)
-        exit(-1)
-        while t < simulationTime:
-            package = Package(PackageType.DATA_PACKAGE)
-            serviceTime = package.size/constants.CHANNEL_SIZE
+        simulationTime = 10000
+        simulationLimit = 10000
+        arrivalDataRate = self.utilization/0.00302 # = (6040 / 2e+6)
+        lastDataPackageTime = 0
+        #Transmission(arrivalDataRate,0.14,0.10)
+        #exit(-1)
 
-            if(len(self.transmissions) == 0):
-                # Usando o servico do primeiro cliente para calcular a taxa de chegada
-                arrivalRate = self.utilization/serviceTime
-                arrivalTime = np.random.exponential(1/arrivalRate)
-                serviceStartTime = arrivalTime
-            else:
-                arrivalRate = self.utilization/self.average_service_time()
-                arrivalTime += np.random.exponential(1/arrivalRate)
-                serviceStartTime = max(arrivalTime, self.transmissions[-1].endServiceTime)
+        consumedEvents = []
+        eventQueue = EventQueue()
+        voiceChannels = []
+        voiceQueue = []
+        dataQueue = []
+
+        in_service_package = None
+
+        # Generating voice channels
+        for i in range(30):
+            voiceChannels.append(VoiceChannel(i))
+
+        currentEvent = None
+
+        while t < simulationTime and len(consumedEvents) < simulationLimit:
+
+            print('Simulation time\t' + str(t) + 's\nEvent Queue Size:\t' + str(eventQueue.length()))
+
+            if currentEvent is not None:
+                consumedEvents.append(currentEvent)
+                #print('Event consumed\t' + str(currentEvent.type))
+
+                # treat evt
+                # if the event is a voice package arrival, the package is created and put in the 
+                # voice package queue
+                if currentEvent.type == EventType.CREATE_VOICE_PACKAGE:
+                    voiceQueue.append(Package(PackageType.VOICE_PACKAGE, currentEvent.source))
+                    print('Voice Package from ' + constants.PACKAGE_SOURCE[currentEvent.source] + ' queued')
+                # if the event type means a voice package should be moved from queue to processing
+                # the first package in the queue is removed and we create an event to finish serving it
+                elif currentEvent.type == EventType.VOICE_PACKAGE_PROCESSING:
+                    in_service_package = voiceQueue.pop(0)
+                    eventQueue.add(Event(t + (in_service_package.size/float(constants.CHANNEL_SIZE)), EventType.VOICE_PACKAGE_SERVED, in_service_package.source))
+                    print('Voice Package from ' + constants.PACKAGE_SOURCE[in_service_package.source] + 'is in the router')
+                # if the event is a voice package finishing being served we clear the router/server
+                elif currentEvent.type == EventType.VOICE_PACKAGE_SERVED:
+                    print('Voice Package from ' + constants.PACKAGE_SOURCE[in_service_package.source] + ' has finished serving')
+                    in_service_package = None
+                # if the event is a data package arrival, the package is created and put in the 
+                # data package queue
+                elif currentEvent.type == EventType.CREATE_DATA_PACKAGE:
+                    dataQueue.append(Package(PackageType.DATA_PACKAGE, currentEvent.source))
+                    print('Data Package from ' + constants.PACKAGE_SOURCE[currentEvent.source] + ' with size ' + str(dataQueue[len(dataQueue)-1].size) + ' queued')
+                    # here we also create the next data package
+
+                # if the event type means a data package should be moved from queue to processing
+                # the first package in the queue is removed and we create an event to finish serving it
+                elif currentEvent.type == EventType.DATA_PACKAGE_PROCESSING:
+                    in_service_package = dataQueue.pop(0)
+                    eventQueue.add(Event(t + (in_service_package.size/float(constants.CHANNEL_SIZE)), EventType.DATA_PACKAGE_SERVED, in_service_package.source))
+                    print('Data Package from ' + constants.PACKAGE_SOURCE[in_service_package.source] + ' with size ' + str(in_service_package.size) + ' is in the router')
+                # if the event is a data package finishing being served we clear the router/server
+                elif currentEvent.type == EventType.DATA_PACKAGE_SERVED:
+                    print('Data Package from ' + constants.PACKAGE_SOURCE[in_service_package.source] + ' with size ' + str(in_service_package.size) + ' has finished serving')
+                    in_service_package = None
+                # Note: altough voice and data events could be treated together, the separation will make
+                # things easier to track and change for the preemptive scenario
+
+            # if there's no package being processed
+            if in_service_package is None:
+                # we check if there's any voice packages waiting to be processed
+                if len(voiceQueue) > 0:
+                    eventQueue.add(Event(t, EventType.VOICE_PACKAGE_PROCESSING, voiceQueue[0].source))
+                # in case there's no voice package to be processed we check if there's any data package
+                # to process
+                # Note: this is due to the fact voice packages have the priority
+                elif len(dataQueue) > 0:
+                    eventQueue.add(Event(t, EventType.DATA_PACKAGE_PROCESSING, 0))
+
+
+            # Generate voice arrivals
+            for i in range(len(voiceChannels)):
+                if t >= voiceChannels[i].nextTransmission:
+                    evtTimes = voiceChannels[i].getEventTimes(t)[1:]
+                    for evtTime in evtTimes:
+                        evt = Event(evtTime + t, EventType.CREATE_VOICE_PACKAGE, i+1)
+                        #print('Voice evt added in ' + str(evt.eventTime) + 's')
+                        eventQueue.add(evt)
+
+            # Generate data arrivals
+            evtTime = lastDataPackageTime + np.random.exponential(1/arrivalDataRate)
+            eventQueue.add(Event(evtTime, EventType.CREATE_DATA_PACKAGE, 0))
+            lastDataPackageTime = evtTime
+            #print('Data evt added in ' + str(evtTime) + 's')
+
+            # print('---------')
+            # for i in range(eventQueue.length()):
+            #     print(str(eventQueue.get(i).type) + ' ' + str(eventQueue.get(i).eventTime))
+            # print('---------')
+
+            # getting next event in simulation time and setting simulation time to event's time
+            currentEvent = eventQueue.pop()
+            print('--------- next event ---------')
+            print(str(currentEvent.type) + ' ' + str(currentEvent.eventTime))
+            print('---------')
+            t = currentEvent.eventTime
+
+        #     package = Package(PackageType.DATA_PACKAGE)
+        #     serviceTime = package.size/constants.CHANNEL_SIZE
+
+        #     if(len(self.transmissions) == 0):
+        #         # Usando o servico do primeiro cliente para calcular a taxa de chegada
+        #         arrivalRate = self.utilization/serviceTime
+        #         arrivalTime = np.random.exponential(1/arrivalRate)
+        #         serviceStartTime = arrivalTime
+        #     else:
+        #         arrivalRate = self.utilization/self.average_service_time()
+        #         arrivalTime += np.random.exponential(1/arrivalRate)
+        #         serviceStartTime = max(arrivalTime, self.transmissions[-1].endServiceTime)
             
-            # time.sleep(1)
-            nextTransmission = Transmission(arrivalTime, serviceStartTime, serviceTime)
-            # nextTransmission.log()
-            self.transmissions.append(nextTransmission)
+        #     # time.sleep(1)
+        #     nextTransmission = Transmission(arrivalTime, serviceStartTime, serviceTime)
+        #     # nextTransmission.log()
+        #     self.transmissions.append(nextTransmission)
 
-            t = arrivalTime
-        print("Packages sent ", len(self.transmissions))
-        print("Waiting time ", self.average_wait_time())
+        #     t = arrivalTime
+        # print("Packages sent ", len(self.transmissions))
+        # print("Waiting time ", self.average_wait_time())
         
         ################
         # MMIQ EXAMPLE #

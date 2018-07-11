@@ -25,16 +25,23 @@ class Transmission():
     #     self.voice_queue = [Package(PackageType.VOICE_PACKAGE) for i in range(30)]
 
 class VoiceChannel():
-    def __init__(self):
-        self.silent_period = np.random.exponential(0.65)
+    def __init__(self, ident):
+        self.id = ident
+        self.nextTransmission = 0
+        
+    def getEventTimes(self, initialTime):
+        self.silent_period = np.random.exponential(1/0.65)
         self.package_num = np.random.geometric(1/22)
         self.service_time = self.package_num * constants.VOICE_ARRIVAL_RATE
 
         self.services_start_time = []
-        self.services_start_time.append(self.silent_period + constants.VOICE_ARRIVAL_RATE)
-        for i in range(self.package_num):
+        self.services_start_time.append(0)
+        for i in range(self.package_num - 1):
             self.services_start_time.append(self.services_start_time[-1] + constants.VOICE_ARRIVAL_RATE)     
-        print(self.services_start_time)
+        #print(self.services_start_time)
+        self.nextTransmission = initialTime + self.services_start_time[-1] + self.silent_period + constants.VOICE_ARRIVAL_RATE
+        print('Next Voice transmission: ' + str(self.nextTransmission) + 's')
+        return self.services_start_time    
 
     def average_data(self):
         i = 0
