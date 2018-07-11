@@ -40,7 +40,7 @@ class VoiceChannel():
             self.services_start_time.append(self.services_start_time[-1] + constants.VOICE_ARRIVAL_RATE)     
         #print(self.services_start_time)
         self.nextTransmission = initialTime + self.services_start_time[-1] + self.silent_period + constants.VOICE_ARRIVAL_RATE
-        print('Next Voice transmission: ' + str(self.nextTransmission) + 's')
+        #print('Next Voice transmission: ' + str(self.nextTransmission) + 's')
         return self.services_start_time    
 
     def average_data(self):

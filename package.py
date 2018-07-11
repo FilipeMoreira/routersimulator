@@ -12,10 +12,13 @@ class Package():
     #              com p1=30%, p2=10%, p3 = 30%, p = 1 - p1 - p2 - p3 = 30%.
     #
 
-    def __init__(self, _type, _source):
+    def __init__(self, _type, _source, _arrivalTime):
         self.type = _type
         self.source = _source
         self.size = 0.0
+        self.arrivalTime = 0.0
+        self.startServingTime = 0.0
+        self.endServingTime = 0.0
         if self.type == PackageType.VOICE_PACKAGE:
             self.size = float(constants.VOICE_PACKAGE_SIZE)
         elif self.type == PackageType.DATA_PACKAGE:
