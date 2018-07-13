@@ -1,3 +1,4 @@
+#encoding: utf-8
 from event import Event
 
 class EventQueue:
@@ -69,6 +70,6 @@ class EventQueue:
         self.queue[i] = self.queue[j]
         self.queue[j] = tmp
 
-    def print(self):
+    def printQueue(self):
         for i in range(len(self.queue)):
             print(str(self.queue[i].eid) + " " + str(self.queue[i].eventTime)  + " " + str(self.queue[i].type))

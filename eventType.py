@@ -1,3 +1,4 @@
+#encoding: utf-8
 from enum import Enum
 
 class EventType(Enum):

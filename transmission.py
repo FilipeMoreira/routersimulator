@@ -1,3 +1,4 @@
+#encoding: utf-8
 from package import Package
 from packageType import PackageType
 import numpy as np

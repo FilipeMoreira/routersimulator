@@ -1,3 +1,4 @@
+#encoding: utf-8
 CHANNEL_SIZE = 2000000 #bits/s
 VOICE_ARRIVAL_RATE = 0.016 #s
 VOICE_PACKAGE_SIZE = 512 #bits

@@ -1,3 +1,4 @@
+#encoding: utf-8
 import numpy as np
 import constants
 import time
@@ -69,9 +70,11 @@ class Simulator:
 
             if servedPackages > transientPhaseSize:
                 # We're passed transient phase
-                currentRound = (servedPackages - transientPhaseSize) % numberOfRounds
+                if currentRound != ((servedPackages - transientPhaseSize) // roundSize):
+                    currentRound = (servedPackages - transientPhaseSize) // roundSize
+                    print(str(currentRound))
 
-            if currentRound >= 0 and (((servedPackages + 1) - transientPhaseSize) % numberOfRounds) > currentRound:
+            if currentRound >= 0 and (((servedPackages + 1) - transientPhaseSize) // roundSize) > currentRound:
                 Nq1PerRound[currentRound] = len(dataQueue)
                 Nq2PerRound[currentRound] = len(voiceQueue)
 
