@@ -13,24 +13,17 @@ from transmission import *
 
 class Simulator:
 
-    def __init__(self, _utilization):
+    def __init__(self, _utilization, debug = False):
         self.utilization = _utilization
         self.transmissions = []
+        self.DEBUG = debug
 
     def simulate(self):
-        
-        # eventQueue = EventQueue()
-
-        # USANDO A UTILIZAÇÃO NO COMEÇO APENAS PARA DISPARAR A SIMULAÇÃO 
-        # evt = Event(np.random.exponential(1/self.utilization), EventType.CREATE_DATA_PACKAGE)
-        # eventQueue.add(evt)
         t = 0
         simulationTime = 10000
         simulationLimit = 10000
         arrivalDataRate = self.utilization/0.00302 # = (6040 / 2e+6)
         lastDataPackageTime = 0
-        #Transmission(arrivalDataRate,0.14,0.10)
-        #exit(-1)
 
         roundSize = 1000 # packages processed
         transientPhaseSize = 2000 #packages processed
@@ -66,30 +59,30 @@ class Simulator:
 
         while servedPackages < totalSimulationsPackages: #t < simulationTime and len(consumedEvents) < simulationLimit:
 
-            #print('Served packages: ' + str(servedPackages))
+            # print('Served packages: ' + str(servedPackages))
 
             if servedPackages > transientPhaseSize:
                 # We're passed transient phase
                 if currentRound != ((servedPackages - transientPhaseSize) // roundSize):
                     currentRound = (servedPackages - transientPhaseSize) // roundSize
-                    print(str(currentRound))
+                    self.log(str(currentRound))
 
             if currentRound >= 0 and (((servedPackages + 1) - transientPhaseSize) // roundSize) > currentRound:
                 Nq1PerRound[currentRound] = len(dataQueue)
                 Nq2PerRound[currentRound] = len(voiceQueue)
 
-            #print('Simulation time\t' + str(t) + 's\nEvent Queue Size:\t' + str(eventQueue.length()))
+            self.log('Simulation time\t' + str(t) + 's\nEvent Queue Size:\t' + str(eventQueue.length()))
 
             if currentEvent is not None:
                 consumedEvents.append(currentEvent)
-                #print('Event consumed\t' + str(currentEvent.type))
+                self.log('Event consumed\t' + str(currentEvent.type))
 
                 # treat evt
                 # if the event is a voice package arrival, the package is created and put in the 
                 # voice package queue
                 if currentEvent.type == EventType.CREATE_VOICE_PACKAGE:
                     voiceQueue.append(Package(PackageType.VOICE_PACKAGE, currentEvent.source, t))
-                    #print('Voice Package from ' + constants.PACKAGE_SOURCE[currentEvent.source] + ' queued')
+                    self.log('Voice Package from ' + constants.PACKAGE_SOURCE[currentEvent.source] + ' queued')
                 # if the event type means a voice package should be moved from queue to processing
                 # the first package in the queue is removed and we create an event to finish serving it
                 elif currentEvent.type == EventType.VOICE_PACKAGE_PROCESSING:
@@ -98,10 +91,10 @@ class Simulator:
                     if currentRound >= 0:
                         totalVoiceWaitingTimePerRound[currentRound] += (in_service_package.startServingTime - in_service_package.arrivalTime)
                     eventQueue.add(Event(t + (in_service_package.size/float(constants.CHANNEL_SIZE)), EventType.VOICE_PACKAGE_SERVED, in_service_package.source))
-                    #print('Voice Package from ' + constants.PACKAGE_SOURCE[in_service_package.source] + 'is in the router')
+                    self.log('Voice Package from ' + constants.PACKAGE_SOURCE[in_service_package.source] + 'is in the router')
                 # if the event is a voice package finishing being served we clear the router/server
                 elif currentEvent.type == EventType.VOICE_PACKAGE_SERVED:
-                    #print('Voice Package from ' + constants.PACKAGE_SOURCE[in_service_package.source] + ' has finished serving')
+                    self.log('Voice Package from ' + constants.PACKAGE_SOURCE[in_service_package.source] + ' has finished serving')
                     if currentRound >= 0:
                         voicePackagesProcessedPerRound[currentRound] += 1
                     servedPackages += 1
@@ -110,7 +103,7 @@ class Simulator:
                 # data package queue
                 elif currentEvent.type == EventType.CREATE_DATA_PACKAGE:
                     dataQueue.append(Package(PackageType.DATA_PACKAGE, currentEvent.source, t))
-                    #print('Data Package from ' + constants.PACKAGE_SOURCE[currentEvent.source] + ' with size ' + str(dataQueue[len(dataQueue)-1].size) + ' queued')
+                    self.log('Data Package from ' + constants.PACKAGE_SOURCE[currentEvent.source] + ' with size ' + str(dataQueue[len(dataQueue)-1].size) + ' queued')
                     # here we also create the next data package
 
                 # if the event type means a data package should be moved from queue to processing
@@ -121,10 +114,10 @@ class Simulator:
                     if currentRound >= 0:
                         totalDataWaitingTimePerRound[currentRound] += (in_service_package.startServingTime - in_service_package.arrivalTime)
                     eventQueue.add(Event(t + (in_service_package.size/float(constants.CHANNEL_SIZE)), EventType.DATA_PACKAGE_SERVED, in_service_package.source))
-                    #print('Data Package from ' + constants.PACKAGE_SOURCE[in_service_package.source] + ' with size ' + str(in_service_package.size) + ' is in the router')
+                    self.log('Data Package from ' + constants.PACKAGE_SOURCE[in_service_package.source] + ' with size ' + str(in_service_package.size) + ' is in the router')
                 # if the event is a data package finishing being served we clear the router/server
                 elif currentEvent.type == EventType.DATA_PACKAGE_SERVED:
-                    #print('Data Package from ' + constants.PACKAGE_SOURCE[in_service_package.source] + ' with size ' + str(in_service_package.size) + ' has finished serving')
+                    self.log('Data Package from ' + constants.PACKAGE_SOURCE[in_service_package.source] + ' with size ' + str(in_service_package.size) + ' has finished serving')
                     in_service_package.endServingTime = t
                     if currentRound >= 0:
                         totalDataProcessingTimePerRound[currentRound] += (in_service_package.endServingTime - in_service_package.startServingTime)
@@ -147,69 +140,33 @@ class Simulator:
 
 
             # Generate voice arrivals
+            self.log('==================================')
             for i in range(len(voiceChannels)):
                 if t >= voiceChannels[i].nextTransmission:
                     evtTimes = voiceChannels[i].getEventTimes(t)[1:]
                     for evtTime in evtTimes:
                         evt = Event(evtTime + t, EventType.CREATE_VOICE_PACKAGE, i+1)
-                        #print('Voice evt added in ' + str(evt.eventTime) + 's')
+                        # self.log('Voice evt added in ' + str(evt.eventTime) + 's', 0.005)
                         eventQueue.add(evt)
+            self.log('==================================')
 
             # Generate data arrivals
             evtTime = lastDataPackageTime + np.random.exponential(1/arrivalDataRate)
             eventQueue.add(Event(evtTime, EventType.CREATE_DATA_PACKAGE, 0))
             lastDataPackageTime = evtTime
-            #print('Data evt added in ' + str(evtTime) + 's')
+            self.log('Data evt added in ' + str(evtTime) + 's')
 
-            # print('---------')
+            # self.log('---------')
             # for i in range(eventQueue.length()):
-            #     print(str(eventQueue.get(i).type) + ' ' + str(eventQueue.get(i).eventTime))
-            # print('---------')
+            #     self.log(str(eventQueue.get(i).type) + ' ' + str(eventQueue.get(i).eventTime))
+            # self.log('---------')
 
             # getting next event in simulation time and setting simulation time to event's time
             currentEvent = eventQueue.pop()
-            # print('--------- next event ---------')
-            # print(str(currentEvent.type) + ' ' + str(currentEvent.eventTime))
-            # print('---------')
+            # self.log('--------- next event ---------')
+            # self.log(str(currentEvent.type) + ' ' + str(currentEvent.eventTime))
+            # self.log('---------')
             t = currentEvent.eventTime
-
-        #     package = Package(PackageType.DATA_PACKAGE)
-        #     serviceTime = package.size/constants.CHANNEL_SIZE
-
-        #     if(len(self.transmissions) == 0):
-        #         # Usando o servico do primeiro cliente para calcular a taxa de chegada
-        #         arrivalRate = self.utilization/serviceTime
-        #         arrivalTime = np.random.exponential(1/arrivalRate)
-        #         serviceStartTime = arrivalTime
-        #     else:
-        #         arrivalRate = self.utilization/self.average_service_time()
-        #         arrivalTime += np.random.exponential(1/arrivalRate)
-        #         serviceStartTime = max(arrivalTime, self.transmissions[-1].endServiceTime)
-            
-        #     # time.sleep(1)
-        #     nextTransmission = Transmission(arrivalTime, serviceStartTime, serviceTime)
-        #     # nextTransmission.log()
-        #     self.transmissions.append(nextTransmission)
-
-        #     t = arrivalTime
-        # print("Packages sent ", len(self.transmissions))
-        # print("Waiting time ", self.average_wait_time())
-        
-        ################
-        # MMIQ EXAMPLE #
-        ################
-        ##calculate arrival date and service time for new customer
-		# if len(Customers)==0:
-		# 	arrival_date=neg_exp(lambd)
-		# 	service_start_date=arrival_date
-		# else:
-		# 	arrival_date+=neg_exp(lambd)
-		# 	service_start_date=max(arrival_date,Customers[-1].service_end_date)
-		# service_time=neg_exp(mu)
-		##create new customer
-		# Customers.append(Customer(arrival_date,service_start_date,service_time))
-		# #increment clock till next end of service
-		# t=arrival_date
 
         # GENERATE STATISTICS
 
@@ -250,29 +207,9 @@ class Simulator:
         print('E[Nq1]: ' + str(finalNq1))
         print('E[Nq2]: ' + str(finalNq2))
 
-    def average_service_time(self):
-        if(len(self.transmissions) > 0):
-            serviceTimeSum = 0
-            for t in self.transmissions:
-                serviceTimeSum += t.serviceTime
-            return serviceTimeSum/len(self.transmissions)
-        return 0
-
-    def getAverageServiceTime(self, spackageType):
-        pass
-
-    def getAverageTotalTime(self, packageType):
-        pass
-
-    def average_wait_time(self):
-        if(len(self.transmissions) > 0):
-            waitingSum = 0
-            for t in self.transmissions:
-                waitingSum += t.waitTime
-            return waitingSum/len(self.transmissions)
-        return 0
-
-    def getAverageLineLength(self, packageType):
-        pass
+    def log(self, message, delay=0.5):
+        if(self.DEBUG):
+            time.sleep(delay)
+            print(message)
     
 #para 2 Delta Médio e Variância de Delta
