@@ -7,23 +7,23 @@ import argparse
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--debug', action='store_true', default = False)
-    parser.add_argument('-utilization', type=float, default = 0)
+    parser.add_argument('--plot', action='store_true', default = False)
+    parser.add_argument('-u', type=float, default = 0)
     args = parser.parse_args()
 
-    if(args.utilization == 0):
-        utilization = 0
-        for i in range(7):
-            utilization += 0.1
+    if(args.u == 0):
+        utilization = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
+        for x in utilization:
             print("=================")
-            print("Utilização ", utilization)
+            print("Utilização ", x)
             print("=================")
-            sim = Simulator(utilization, args.debug)
+            sim = Simulator(x, args.debug, args.plot)
             sim.simulate()
     else:
         print("=================")
-        print("Utilização ", args.utilization)
+        print("Utilização ", args.u)
         print("=================")
-        sim = Simulator(args.utilization,  args.debug)
+        sim = Simulator(args.u,  args.debug, args.plot)
         sim.simulate()
 
 main()

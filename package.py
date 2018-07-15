@@ -17,7 +17,7 @@ class Package():
         self.type = _type
         self.source = _source
         self.size = 0.0
-        self.arrivalTime = 0.0
+        self.arrivalTime = _arrivalTime
         self.startServingTime = 0.0
         self.endServingTime = 0.0
         if self.type == PackageType.VOICE_PACKAGE:

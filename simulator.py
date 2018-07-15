@@ -1,7 +1,9 @@
 #encoding: utf-8
 import numpy as np
+import matplotlib.pyplot as plt
 import constants
 import time
+import os
 from eventQueue import EventQueue
 from event import Event
 from queue import Queue
@@ -13,10 +15,11 @@ from transmission import *
 
 class Simulator:
 
-    def __init__(self, _utilization, debug = False):
+    def __init__(self, _utilization, debug = False, plot = False):
         self.utilization = _utilization
         self.transmissions = []
         self.DEBUG = debug
+        self.PLOT = plot
 
     def simulate(self):
         t = 0
@@ -25,9 +28,11 @@ class Simulator:
         arrivalDataRate = self.utilization/0.00302 # = (6040 / 2e+6)
         lastDataPackageTime = 0
 
-        roundSize = 1000 # packages processed
-        transientPhaseSize = 2000 #packages processed
-        numberOfRounds = 5
+        roundSize = 10000 # packages processed
+        transientPhaseSize = 0 #packages processed
+        # transientPhaseSize = 2000 #packages processed
+        # numberOfRounds = 5
+        numberOfRounds = 1
         totalSimulationsPackages = (numberOfRounds * roundSize) + transientPhaseSize
 
         consumedEvents = []
@@ -47,6 +52,10 @@ class Simulator:
         voicePackagesProcessedPerRound = [0] * numberOfRounds
         dataPackagesProcessedPerRound = [0] * numberOfRounds
 
+        averageVoiceWaitingPerRound = []
+        averageDataWaitingPerRound = []
+        averageDataServingTimePerRound = []
+
 
         in_service_package = None
 
@@ -65,6 +74,9 @@ class Simulator:
                 # We're passed transient phase
                 if currentRound != ((servedPackages - transientPhaseSize) // roundSize):
                     currentRound = (servedPackages - transientPhaseSize) // roundSize
+                    print(currentRound)
+                    print(servedPackages)
+                    print(roundSize)
                     self.log(str(currentRound))
 
             if currentRound >= 0 and (((servedPackages + 1) - transientPhaseSize) // roundSize) > currentRound:
@@ -90,6 +102,12 @@ class Simulator:
                     in_service_package.startServingTime = t
                     if currentRound >= 0:
                         totalVoiceWaitingTimePerRound[currentRound] += (in_service_package.startServingTime - in_service_package.arrivalTime)
+
+                        # only for plot purpose
+                        averageDataServingTimePerRound.append(sum(totalDataProcessingTimePerRound)/(sum(dataPackagesProcessedPerRound)+1))  
+                        averageVoiceWaitingPerRound.append(sum(totalVoiceWaitingTimePerRound)/(sum(voicePackagesProcessedPerRound)+1))
+                        averageDataWaitingPerRound.append(sum(totalDataWaitingTimePerRound)/(sum(dataPackagesProcessedPerRound)+1))   
+
                     eventQueue.add(Event(t + (in_service_package.size/float(constants.CHANNEL_SIZE)), EventType.VOICE_PACKAGE_SERVED, in_service_package.source))
                     self.log('Voice Package from ' + constants.PACKAGE_SOURCE[in_service_package.source] + 'is in the router')
                 # if the event is a voice package finishing being served we clear the router/server
@@ -98,6 +116,7 @@ class Simulator:
                     if currentRound >= 0:
                         voicePackagesProcessedPerRound[currentRound] += 1
                     servedPackages += 1
+                    
                     in_service_package = None
                 # if the event is a data package arrival, the package is created and put in the 
                 # data package queue
@@ -113,6 +132,11 @@ class Simulator:
                     in_service_package.startServingTime = t
                     if currentRound >= 0:
                         totalDataWaitingTimePerRound[currentRound] += (in_service_package.startServingTime - in_service_package.arrivalTime)
+                        # only for plot purpose
+                        averageDataServingTimePerRound.append(sum(totalDataProcessingTimePerRound)/(sum(dataPackagesProcessedPerRound)+1))  
+                        averageVoiceWaitingPerRound.append(sum(totalVoiceWaitingTimePerRound)/(sum(voicePackagesProcessedPerRound)+1))
+                        averageDataWaitingPerRound.append(sum(totalDataWaitingTimePerRound)/(sum(dataPackagesProcessedPerRound)+1))                    
+
                     eventQueue.add(Event(t + (in_service_package.size/float(constants.CHANNEL_SIZE)), EventType.DATA_PACKAGE_SERVED, in_service_package.source))
                     self.log('Data Package from ' + constants.PACKAGE_SOURCE[in_service_package.source] + ' with size ' + str(in_service_package.size) + ' is in the router')
                 # if the event is a data package finishing being served we clear the router/server
@@ -122,8 +146,16 @@ class Simulator:
                     if currentRound >= 0:
                         totalDataProcessingTimePerRound[currentRound] += (in_service_package.endServingTime - in_service_package.startServingTime)
                         dataPackagesProcessedPerRound[currentRound] += 1
+                        # only for plot purpose
+                        averageDataServingTimePerRound.append(sum(totalDataProcessingTimePerRound)/(sum(dataPackagesProcessedPerRound)+1))  
+                        averageVoiceWaitingPerRound.append(sum(totalVoiceWaitingTimePerRound)/(sum(voicePackagesProcessedPerRound)+1))
+                        averageDataWaitingPerRound.append(sum(totalDataWaitingTimePerRound)/(sum(dataPackagesProcessedPerRound)+1))                        
+
+                      
                     servedPackages += 1
+                    
                     in_service_package = None
+
                 # Note: altough voice and data events could be treated together, the separation will make
                 # things easier to track and change for the preemptive scenario
 
@@ -179,6 +211,34 @@ class Simulator:
         finalNq1 = 0
         finalNq2 = 0
 
+        if(self.PLOT):
+            if(not(os.path.exists("images"))):
+                os.mkdir("images")
+
+            plt.plot(averageDataWaitingPerRound)
+            plt.ylabel('E[W1]')
+            plt.ylabel('Pacotes servidos')
+            plt.title("V.A. W1 com valor rho1 = " + str(self.utilization))
+            plt.xlim(xmax = servedPackages)
+            plt.savefig('images/W1-'+str(self.utilization)+'.png')
+            plt.clf()
+
+            plt.plot(averageDataServingTimePerRound)
+            plt.ylabel('E[X1]')
+            plt.ylabel('Pacotes servidos')
+            plt.title("V.A. X1 com valor rho1 = " + str(self.utilization))
+            plt.xlim(xmax = servedPackages)
+            plt.savefig('images/X1-'+str(self.utilization)+'.png')
+            plt.clf()
+
+            plt.plot(averageVoiceWaitingPerRound)
+            plt.ylabel('E[W2]')
+            plt.ylabel('Pacotes servidos')
+            plt.title("V.A. W2 com valor rho1 = " + str(self.utilization))
+            plt.xlim(xmax = servedPackages)
+            plt.savefig('images/W2-'+str(self.utilization)+'.png')
+            plt.clf()
+
         for i in range(numberOfRounds):
             W1 = totalDataWaitingTimePerRound[i] / dataPackagesProcessedPerRound[i]
             X1 = totalDataProcessingTimePerRound[i] / dataPackagesProcessedPerRound[i]
@@ -212,4 +272,5 @@ class Simulator:
             time.sleep(delay)
             print(message)
     
+
 #para 2 Delta Médio e Variância de Delta
