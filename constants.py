@@ -10,3 +10,6 @@ PACKAGE_SOURCE = ['Data Stream', 'Voice Channel 1', 'Voice Channel 2', 'Voice Ch
 'Voice Channel 19', 'Voice Channel 20', 'Voice Channel 21', 'Voice Channel 22', 'Voice Channel 23', 
 'Voice Channel 24', 'Voice Channel 25', 'Voice Channel 26', 'Voice Channel 27', 'Voice Channel 28', 
 'Voice Channel 29', 'Voice Channel 30']
+M1 = 1000
+M2 = 5000000000
+M3 = 10

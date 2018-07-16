@@ -15,3 +15,4 @@ class Event:
         self.type = _type
         self.source = _source
         self.transmission = _transmission
+        self.package_reference = 0

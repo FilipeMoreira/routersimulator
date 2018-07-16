@@ -28,6 +28,12 @@ class EventQueue:
         # self.queue.append(item)
         # self.sort(0,len(self.queue)-1)
 
+    def remove_with_package(self, _package):
+        for index, evt in enumerate(self.queue):
+            if evt.package_reference == _package:
+                del self.queue[index]
+                break
+
     def get(self, index):
         return self.queue[index]
     

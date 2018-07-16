@@ -15,10 +15,11 @@ from transmission import *
 
 class Simulator:
 
-    def __init__(self, _utilization, debug = False, plot = False):
+    def __init__(self, _utilization, debug = False, plot = False, preemptive = False):
         self.utilization = _utilization
         self.DEBUG = debug
         self.PLOT = plot
+        self.preemptive = preemptive
 
     def simulate(self):
         t = 0
@@ -145,7 +146,10 @@ class Simulator:
                         averageVoiceWaitingPerRound.append(sum(totalVoiceWaitingTimePerRound)/(sum(voicePackagesProcessedPerRound)+1))
                         averageDataWaitingPerRound.append(sum(totalDataWaitingTimePerRound)/(sum(dataPackagesProcessedPerRound)+1))                    
 
-                    eventQueue.add(Event(t + (in_service_package.size/float(constants.CHANNEL_SIZE)), EventType.DATA_PACKAGE_SERVED, in_service_package.source, in_service_package.transmission))
+                    evt = Event(t + (in_service_package.size/float(constants.CHANNEL_SIZE)), EventType.DATA_PACKAGE_SERVED, in_service_package.source, in_service_package.transmission)
+                    if self.preemptive:
+                        evt.package_reference = in_service_package
+                    eventQueue.add(evt)
                     self.log('Data Package from ' + constants.PACKAGE_SOURCE[in_service_package.source] + ' with size ' + str(in_service_package.size) + ' is in the router')
                 # if the event is a data package finishing being served we clear the router/server
                 elif currentEvent.type == EventType.DATA_PACKAGE_SERVED:
@@ -166,6 +170,16 @@ class Simulator:
 
                 # Note: altough voice and data events could be treated together, the separation will make
                 # things easier to track and change for the preemptive scenario
+
+            if self.preemptive:
+                if len(voiceQueue) > 0 and in_service_package is not None and in_service_package.type == PackageType.DATA_PACKAGE:
+                    pkg = Package(PackageType.DATA_PACKAGE, 0, t + 0.000256, 0)
+                    pkg.size = in_service_package.size # - (( t - in_service_package.startServingTime ) * constants.CHANNEL_SIZE)
+                    dataQueue.insert(0, pkg)
+                    eventQueue.remove_with_package(in_service_package)
+                    in_service_package = None
+                    if pkg.size < 0:
+                        print("ERROR SIZE")
 
             # if there's no package being processed
             if in_service_package is None:
@@ -292,7 +306,7 @@ class Simulator:
             finalNq1 += dataPackagesProcessedPerRound[i] / numberOfRounds
             finalNq2 += voicePackagesProcessedPerRound[i] / numberOfRounds
             dt /= (constants.M1 * numberOfRounds)
-            dt2 /= ((constants.M2/(constants.M3*self.utilization)) * numberOfRounds)
+            dt2 /= (constants.M2/(constants.M3 * self.utilization) * numberOfRounds)
 
         print('E[W1]: ' + str(finalW1))
         print('E[W2]: ' + str(finalW2))
@@ -304,6 +318,8 @@ class Simulator:
         print('E[Nq2]: ' + str(finalNq2))
         print('E[Delta]: ' + str(dt))
         print('V[Delta]: ' + str(dt2))
+
+        #print(str(finalT1) + ',' + str(finalW1) + ',' + str(finalX1) + ',' + str(finalNq1) + ',' + str(finalT2) + ',' + str(finalW2) + ',' + str(finalX2) + ',' + str(finalNq2) + ',' + str(dt) + ',' + str(dt2))
 
     def log(self, message, delay=0.5):
         if(self.DEBUG):
