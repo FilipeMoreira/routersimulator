@@ -2,6 +2,7 @@
 CHANNEL_SIZE = 2000000 #bits/s
 VOICE_ARRIVAL_RATE = 0.016 #s
 VOICE_PACKAGE_SIZE = 512 #bits
+VOICE_CHANNELS = 30
 PACKAGE_SOURCE = ['Data Stream', 'Voice Channel 1', 'Voice Channel 2', 'Voice Channel 3', 
 'Voice Channel 4', 'Voice Channel 5', 'Voice Channel 6', 'Voice Channel 7', 'Voice Channel 8', 
 'Voice Channel 9', 'Voice Channel 10', 'Voice Channel 11', 'Voice Channel 12', 'Voice Channel 13', 

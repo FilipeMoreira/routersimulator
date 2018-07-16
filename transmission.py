@@ -6,13 +6,11 @@ import constants
 
 class Transmission():
 
-    def __init__(self, _arrivalTime, _startServiceTime, _serviceTime):
-        self.arrivalTime = _arrivalTime
-        self.startServiceTime = _startServiceTime
-        self.serviceTime = _serviceTime
-        self.endServiceTime = _startServiceTime + _serviceTime
-        self.waitTime = (_startServiceTime - _arrivalTime) or 0
-        channel = VoiceChannel()
+    def __init__(self, _startTime, _endTime, _size, _processedPackages):
+        self.startTime = _startTime
+        self.endTime = _endTime
+        self.size = _size
+        self.processedPackages = _processedPackages
 
     def log(self):
         print("============================")

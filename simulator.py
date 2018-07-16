@@ -17,7 +17,6 @@ class Simulator:
 
     def __init__(self, _utilization, debug = False, plot = False):
         self.utilization = _utilization
-        self.transmissions = []
         self.DEBUG = debug
         self.PLOT = plot
 
@@ -32,7 +31,7 @@ class Simulator:
 
         roundSize = 1000 # packages processed
         transientPhaseSize = 2500 #packages processed
-        numberOfRounds = 5
+        numberOfRounds = 10
         totalSimulationsPackages = (numberOfRounds * roundSize) + transientPhaseSize
 
         consumedEvents = []
@@ -56,11 +55,12 @@ class Simulator:
         averageDataWaitingPerRound = []
         averageDataServingTimePerRound = []
 
+        transmissions = [{}] * ( constants.VOICE_CHANNELS * numberOfRounds )
 
         in_service_package = None
 
         # Generating voice channels
-        for i in range(30):
+        for i in range(constants.VOICE_CHANNELS):
             voiceChannels.append(VoiceChannel(i))
 
         currentEvent = None
@@ -74,9 +74,9 @@ class Simulator:
                 # We're passed transient phase
                 if currentRound != ((servedPackages - transientPhaseSize) // roundSize):
                     currentRound = (servedPackages - transientPhaseSize) // roundSize
-                    print(currentRound)
-                    print(servedPackages)
-                    print(roundSize)
+                    #print(currentRound)
+                    #print(servedPackages)
+                    #print(roundSize)
                     self.log(str(currentRound))
 
 
@@ -94,7 +94,7 @@ class Simulator:
                 # if the event is a voice package arrival, the package is created and put in the 
                 # voice package queue
                 if currentEvent.type == EventType.CREATE_VOICE_PACKAGE:
-                    voiceQueue.append(Package(PackageType.VOICE_PACKAGE, currentEvent.source, t))
+                    voiceQueue.append(Package(PackageType.VOICE_PACKAGE, currentEvent.source, t, currentEvent.transmission))
                     self.log('Voice Package from ' + constants.PACKAGE_SOURCE[currentEvent.source] + ' queued')
                 # if the event type means a voice package should be moved from queue to processing
                 # the first package in the queue is removed and we create an event to finish serving it
@@ -109,7 +109,7 @@ class Simulator:
                         averageVoiceWaitingPerRound.append(sum(totalVoiceWaitingTimePerRound)/(sum(voicePackagesProcessedPerRound)+1))
                         averageDataWaitingPerRound.append(sum(totalDataWaitingTimePerRound)/(sum(dataPackagesProcessedPerRound)+1))   
 
-                    eventQueue.add(Event(t + (in_service_package.size/float(constants.CHANNEL_SIZE)), EventType.VOICE_PACKAGE_SERVED, in_service_package.source))
+                    eventQueue.add(Event(t + (in_service_package.size/float(constants.CHANNEL_SIZE)), EventType.VOICE_PACKAGE_SERVED, in_service_package.source, in_service_package.transmission))
                     self.log('Voice Package from ' + constants.PACKAGE_SOURCE[in_service_package.source] + 'is in the router')
                 # if the event is a voice package finishing being served we clear the router/server
                 elif currentEvent.type == EventType.VOICE_PACKAGE_SERVED:
@@ -117,12 +117,19 @@ class Simulator:
                     if currentRound >= 0:
                         voicePackagesProcessedPerRound[currentRound] += 1
                     servedPackages += 1
+
+                    if currentRound >= 0 and in_service_package.transmission in transmissions[(in_service_package.source - 1) + (currentRound * constants.VOICE_CHANNELS)].keys():
+                        transmission = transmissions[(in_service_package.source - 1) + (currentRound * constants.VOICE_CHANNELS)][in_service_package.transmission]
+                        transmission.processedPackages += 1
+
+                        if transmission.size < transmission.processedPackages:
+                            transmission.endTime = t
                     
                     in_service_package = None
                 # if the event is a data package arrival, the package is created and put in the 
                 # data package queue
                 elif currentEvent.type == EventType.CREATE_DATA_PACKAGE:
-                    dataQueue.append(Package(PackageType.DATA_PACKAGE, currentEvent.source, t))
+                    dataQueue.append(Package(PackageType.DATA_PACKAGE, currentEvent.source, t, currentEvent.transmission))
                     self.log('Data Package from ' + constants.PACKAGE_SOURCE[currentEvent.source] + ' with size ' + str(dataQueue[len(dataQueue)-1].size) + ' queued')
                     # here we also create the next data package
 
@@ -138,7 +145,7 @@ class Simulator:
                         averageVoiceWaitingPerRound.append(sum(totalVoiceWaitingTimePerRound)/(sum(voicePackagesProcessedPerRound)+1))
                         averageDataWaitingPerRound.append(sum(totalDataWaitingTimePerRound)/(sum(dataPackagesProcessedPerRound)+1))                    
 
-                    eventQueue.add(Event(t + (in_service_package.size/float(constants.CHANNEL_SIZE)), EventType.DATA_PACKAGE_SERVED, in_service_package.source))
+                    eventQueue.add(Event(t + (in_service_package.size/float(constants.CHANNEL_SIZE)), EventType.DATA_PACKAGE_SERVED, in_service_package.source, in_service_package.transmission))
                     self.log('Data Package from ' + constants.PACKAGE_SOURCE[in_service_package.source] + ' with size ' + str(in_service_package.size) + ' is in the router')
                 # if the event is a data package finishing being served we clear the router/server
                 elif currentEvent.type == EventType.DATA_PACKAGE_SERVED:
@@ -164,12 +171,12 @@ class Simulator:
             if in_service_package is None:
                 # we check if there's any voice packages waiting to be processed
                 if len(voiceQueue) > 0:
-                    eventQueue.add(Event(t, EventType.VOICE_PACKAGE_PROCESSING, voiceQueue[0].source))
+                    eventQueue.add(Event(t, EventType.VOICE_PACKAGE_PROCESSING, voiceQueue[0].source, voiceQueue[0].transmission))
                 # in case there's no voice package to be processed we check if there's any data package
                 # to process
                 # Note: this is due to the fact voice packages have the priority
                 elif len(dataQueue) > 0:
-                    eventQueue.add(Event(t, EventType.DATA_PACKAGE_PROCESSING, 0))
+                    eventQueue.add(Event(t, EventType.DATA_PACKAGE_PROCESSING, 0, 0))
 
 
             # Generate voice arrivals
@@ -177,8 +184,13 @@ class Simulator:
             for i in range(len(voiceChannels)):
                 if t >= voiceChannels[i].nextTransmission:# and eventQueue.length() < maxEventListSize:
                     evtTimes = voiceChannels[i].getEventTimes(t)[1:]
+                    transmissionId = 0
+                    if currentRound >= 0 and len(evtTimes) > 0:
+                        transmission = Transmission(evtTimes[0], 0, (len(evtTimes) - 1), 0)
+                        transmissionId = len(transmissions[i + (currentRound * constants.VOICE_CHANNELS)].keys())
+                        transmissions[i + (currentRound * constants.VOICE_CHANNELS)][transmissionId] = transmission
                     for evtTime in evtTimes:
-                        evt = Event(evtTime + t, EventType.CREATE_VOICE_PACKAGE, i+1)
+                        evt = Event(evtTime + t, EventType.CREATE_VOICE_PACKAGE, i+1, transmissionId)
                         # self.log('Voice evt added in ' + str(evt.eventTime) + 's', 0.005)
                         eventQueue.add(evt)
             self.log('==================================')
@@ -186,7 +198,7 @@ class Simulator:
             # Generate data arrivals
             if t >= lastDataPackageTime:
                 evtTime = lastDataPackageTime + np.random.exponential(1/arrivalDataRate)
-                eventQueue.add(Event(evtTime, EventType.CREATE_DATA_PACKAGE, 0))
+                eventQueue.add(Event(evtTime, EventType.CREATE_DATA_PACKAGE, 0, 0))
                 lastDataPackageTime = evtTime
                 self.log('Data evt added in ' + str(evtTime) + 's')
                 #print('Data evt added in ' + str(evtTime) + 's')
@@ -213,6 +225,8 @@ class Simulator:
         finalT2 = 0
         finalNq1 = 0
         finalNq2 = 0
+
+        delta = 0
 
         if(self.PLOT):
             if(not(os.path.exists("images"))):
@@ -249,8 +263,25 @@ class Simulator:
             W2 = totalVoiceWaitingTimePerRound[i] / voicePackagesProcessedPerRound[i]
             X2 = X2PerRound[i]
             T2 = X2 + W2
-            print('Round ' + str(i) + ':\nW1: ' + str(W1) + '\tX1: ' + str(X1) + '\tT1: ' + str(T1))
-            print('W2: ' + str(W2) + '\tX2: ' + str(X2) + '\tT2: ' + str(T2) + '\n')
+            #print('Round ' + str(i) + ':\nW1: ' + str(W1) + '\tX1: ' + str(X1) + '\tT1: ' + str(T1))
+            #print('W2: ' + str(W2) + '\tX2: ' + str(X2) + '\tT2: ' + str(T2) + '\n')
+
+            dt = 0
+            dt2 = 0
+            dts = [0] * constants.VOICE_CHANNELS
+            for j in range(len(transmissions) // constants.VOICE_CHANNELS):
+                for k in transmissions[j + (i * constants.VOICE_CHANNELS)].keys():
+                    transmission = transmissions[j + (i * constants.VOICE_CHANNELS)].get(k)
+                    if transmission.endTime > 0:
+                        dt += ((transmission.endTime - transmission.startTime) / (len(transmissions[j + (i * constants.VOICE_CHANNELS)]) - 1))
+                dts[j] = dt
+
+            for j in range(len(transmissions) // constants.VOICE_CHANNELS):
+                for k in transmissions[j + (i * constants.VOICE_CHANNELS)].keys():
+                    transmission = transmissions[j + (i * constants.VOICE_CHANNELS)].get(k)
+                    if transmission.endTime > 0:
+                        dt2 += (((transmission.endTime - transmission.startTime) - dts[j]) ** 2 ) / (len(transmissions[j + (i * constants.VOICE_CHANNELS)]) - 1)
+
 
             finalW1 += W1 / numberOfRounds
             finalW2 += W2 / numberOfRounds
@@ -260,6 +291,8 @@ class Simulator:
             finalT2 += T2 / numberOfRounds
             finalNq1 += dataPackagesProcessedPerRound[i] / numberOfRounds
             finalNq2 += voicePackagesProcessedPerRound[i] / numberOfRounds
+            dt /= (constants.M1 * numberOfRounds)
+            dt2 /= ((constants.M2/(constants.M3*self.utilization)) * numberOfRounds)
 
         print('E[W1]: ' + str(finalW1))
         print('E[W2]: ' + str(finalW2))
@@ -269,11 +302,11 @@ class Simulator:
         print('E[T2]: ' + str(finalT2))
         print('E[Nq1]: ' + str(finalNq1))
         print('E[Nq2]: ' + str(finalNq2))
+        print('E[Delta]: ' + str(dt))
+        print('V[Delta]: ' + str(dt2))
 
     def log(self, message, delay=0.5):
         if(self.DEBUG):
             time.sleep(delay)
             print(message)
     
-
-#para 2 Delta Médio e Variância de Delta

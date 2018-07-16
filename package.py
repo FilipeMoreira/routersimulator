@@ -13,9 +13,10 @@ class Package():
     #              com p1=30%, p2=10%, p3 = 30%, p = 1 - p1 - p2 - p3 = 30%.
     #
 
-    def __init__(self, _type, _source, _arrivalTime):
+    def __init__(self, _type, _source, _arrivalTime, _transmission):
         self.type = _type
         self.source = _source
+        self.transmission = _transmission
         self.size = 0.0
         self.arrivalTime = _arrivalTime
         self.startServingTime = 0.0
