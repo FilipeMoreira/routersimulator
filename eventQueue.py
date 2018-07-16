@@ -77,5 +77,8 @@ class EventQueue:
         self.queue[j] = tmp
 
     def printQueue(self):
+        print('---')
         for i in range(len(self.queue)):
-            print(str(self.queue[i].eid) + " " + str(self.queue[i].eventTime)  + " " + str(self.queue[i].type))
+            print(str(self.queue[i].eventTime)  + " " + str(self.queue[i].type))
+            
+        print('---')
