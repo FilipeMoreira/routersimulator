@@ -28,11 +28,11 @@ class Simulator:
         arrivalDataRate = self.utilization/0.00302 # = (6040 / 2e+6)
         lastDataPackageTime = 0
 
-        roundSize = 10000 # packages processed
-        transientPhaseSize = 0 #packages processed
-        # transientPhaseSize = 2000 #packages processed
-        # numberOfRounds = 5
-        numberOfRounds = 1
+        maxEventListSize = 1000
+
+        roundSize = 1000 # packages processed
+        transientPhaseSize = 2500 #packages processed
+        numberOfRounds = 5
         totalSimulationsPackages = (numberOfRounds * roundSize) + transientPhaseSize
 
         consumedEvents = []
@@ -78,6 +78,7 @@ class Simulator:
                     print(servedPackages)
                     print(roundSize)
                     self.log(str(currentRound))
+
 
             if currentRound >= 0 and (((servedPackages + 1) - transientPhaseSize) // roundSize) > currentRound:
                 Nq1PerRound[currentRound] = len(dataQueue)
@@ -174,7 +175,7 @@ class Simulator:
             # Generate voice arrivals
             self.log('==================================')
             for i in range(len(voiceChannels)):
-                if t >= voiceChannels[i].nextTransmission:
+                if t >= voiceChannels[i].nextTransmission:# and eventQueue.length() < maxEventListSize:
                     evtTimes = voiceChannels[i].getEventTimes(t)[1:]
                     for evtTime in evtTimes:
                         evt = Event(evtTime + t, EventType.CREATE_VOICE_PACKAGE, i+1)
@@ -183,10 +184,12 @@ class Simulator:
             self.log('==================================')
 
             # Generate data arrivals
-            evtTime = lastDataPackageTime + np.random.exponential(1/arrivalDataRate)
-            eventQueue.add(Event(evtTime, EventType.CREATE_DATA_PACKAGE, 0))
-            lastDataPackageTime = evtTime
-            self.log('Data evt added in ' + str(evtTime) + 's')
+            if t >= lastDataPackageTime:
+                evtTime = lastDataPackageTime + np.random.exponential(1/arrivalDataRate)
+                eventQueue.add(Event(evtTime, EventType.CREATE_DATA_PACKAGE, 0))
+                lastDataPackageTime = evtTime
+                self.log('Data evt added in ' + str(evtTime) + 's')
+                #print('Data evt added in ' + str(evtTime) + 's')
 
             # self.log('---------')
             # for i in range(eventQueue.length()):
