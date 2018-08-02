@@ -25,12 +25,12 @@ class Simulator:
         t = 0
         simulationTime = 10000
         simulationLimit = 10000
-        arrivalDataRate = self.utilization/0.00302 # = (6040 / 2e+6)
+        arrivalDataRate = self.utilization/0.00302 # = (6040 bits / 2e+6 bits/s) s   |   
         lastDataPackageTime = 0
 
         maxEventListSize = 1000
 
-        roundSize = 1000 # packages processed
+        roundSize = 2000 # packages processed
         transientPhaseSize = 2500 #packages processed
         numberOfRounds = 10
         totalSimulationsPackages = (numberOfRounds * roundSize) + transientPhaseSize
@@ -67,21 +67,23 @@ class Simulator:
         currentEvent = None
         currentRound = -1
 
-        while servedPackages < totalSimulationsPackages: #t < simulationTime and len(consumedEvents) < simulationLimit:
+        servedDataPackages = 0
+
+        while servedDataPackages < totalSimulationsPackages: #t < simulationTime and len(consumedEvents) < simulationLimit:
 
             # print('Served packages: ' + str(servedPackages))
 
-            if servedPackages > transientPhaseSize:
+            if servedDataPackages > transientPhaseSize:
                 # We're passed transient phase
-                if currentRound != ((servedPackages - transientPhaseSize) // roundSize):
-                    currentRound = (servedPackages - transientPhaseSize) // roundSize
+                if currentRound != ((servedDataPackages - transientPhaseSize) // roundSize):
+                    currentRound = (servedDataPackages - transientPhaseSize) // roundSize
                     #print(currentRound)
                     #print(servedPackages)
                     #print(roundSize)
                     self.log(str(currentRound))
 
 
-            if currentRound >= 0 and (((servedPackages + 1) - transientPhaseSize) // roundSize) > currentRound:
+            if currentRound >= 0 and (((servedDataPackages + 1) - transientPhaseSize) // roundSize) > currentRound:
                 Nq1PerRound[currentRound] = len(dataQueue)
                 Nq2PerRound[currentRound] = len(voiceQueue)
 
@@ -165,6 +167,7 @@ class Simulator:
 
                       
                     servedPackages += 1
+                    servedDataPackages += 1
                     
                     in_service_package = None
 
@@ -173,6 +176,7 @@ class Simulator:
 
             if self.preemptive:
                 if len(voiceQueue) > 0 and in_service_package is not None and in_service_package.type == PackageType.DATA_PACKAGE:
+                    totalDataProcessingTimePerRound[currentRound] += (t - in_service_package.startServingTime)
                     pkg = Package(PackageType.DATA_PACKAGE, 0, t + 0.000256, 0)
                     pkg.size = in_service_package.size # - (( t - in_service_package.startServingTime ) * constants.CHANNEL_SIZE)
                     dataQueue.insert(0, pkg)
@@ -307,6 +311,9 @@ class Simulator:
             finalNq2 += voicePackagesProcessedPerRound[i] / numberOfRounds
             dt /= (constants.M1 * numberOfRounds)
             dt2 /= (constants.M2/(constants.M3 * self.utilization) * numberOfRounds)
+
+        finalNq1 = arrivalDataRate * finalW1
+        finalNq2 = constants.VOICE_PACKAGE_ARRIVAL_RATE * finalW2
 
         print('E[W1]: ' + str(finalW1))
         print('E[W2]: ' + str(finalW2))
