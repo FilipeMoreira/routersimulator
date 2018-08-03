@@ -11,7 +11,9 @@ from packageType import PackageType
 from eventType import EventType 
 from package import Package
 from transmission import *
-
+from scipy import stats
+import scipy as sp
+from numpy import std
 
 class Simulator:
 
@@ -43,13 +45,27 @@ class Simulator:
         servedPackages = 0
 
         totalDataWaitingTimePerRound = [0] * numberOfRounds
+        WaitingTimeSamplePerRound = []
+        for i in range(numberOfRounds):
+            WaitingTimeSamplePerRound.append([])
+
         totalDataProcessingTimePerRound = [0] * numberOfRounds
+        ProcessingTimeSamplePerRound = []
+        for i in range(numberOfRounds):
+            ProcessingTimeSamplePerRound.append([])
+
         totalVoiceWaitingTimePerRound = [0] * numberOfRounds
+        VoiceWaitingTimeSamplePerRound = []
+        for i in range(numberOfRounds):
+            VoiceWaitingTimeSamplePerRound.append([])
+
         X2PerRound = [0.000256] * numberOfRounds # voice package processing time is fixed due to voice package size being fixed
         # T1 = W1 + X1 | T2 = W2 + X2
         Nq1PerRound = [0] * numberOfRounds
         Nq2PerRound = [0] * numberOfRounds
+
         voicePackagesProcessedPerRound = [0] * numberOfRounds
+
         dataPackagesProcessedPerRound = [0] * numberOfRounds
 
         averageVoiceWaitingPerRound = []
@@ -106,7 +122,7 @@ class Simulator:
                     in_service_package.startServingTime = t
                     if currentRound >= 0:
                         totalVoiceWaitingTimePerRound[currentRound] += (in_service_package.startServingTime - in_service_package.arrivalTime)
-
+                        VoiceWaitingTimeSamplePerRound[currentRound].append(in_service_package.startServingTime - in_service_package.arrivalTime)
                         # only for plot purpose
                         averageDataServingTimePerRound.append(sum(totalDataProcessingTimePerRound)/(sum(dataPackagesProcessedPerRound)+1))  
                         averageVoiceWaitingPerRound.append(sum(totalVoiceWaitingTimePerRound)/(sum(voicePackagesProcessedPerRound)+1))
@@ -143,6 +159,7 @@ class Simulator:
                     in_service_package.startServingTime = t
                     if currentRound >= 0:
                         totalDataWaitingTimePerRound[currentRound] += (in_service_package.startServingTime - in_service_package.arrivalTime)
+                        WaitingTimeSamplePerRound[currentRound].append(in_service_package.startServingTime - in_service_package.arrivalTime)
                         # only for plot purpose
                         averageDataServingTimePerRound.append(sum(totalDataProcessingTimePerRound)/(sum(dataPackagesProcessedPerRound)+1))  
                         averageVoiceWaitingPerRound.append(sum(totalVoiceWaitingTimePerRound)/(sum(voicePackagesProcessedPerRound)+1))
@@ -160,6 +177,7 @@ class Simulator:
                     if currentRound >= 0:
                         totalDataProcessingTimePerRound[currentRound] += (in_service_package.endServingTime - in_service_package.startServingTime)
                         dataPackagesProcessedPerRound[currentRound] += 1
+                        ProcessingTimeSamplePerRound[currentRound].append(in_service_package.endServingTime - in_service_package.startServingTime)
                         # only for plot purpose
                         averageDataServingTimePerRound.append(sum(totalDataProcessingTimePerRound)/(sum(dataPackagesProcessedPerRound)+1))  
                         averageVoiceWaitingPerRound.append(sum(totalVoiceWaitingTimePerRound)/(sum(voicePackagesProcessedPerRound)+1))
@@ -177,6 +195,7 @@ class Simulator:
             if self.preemptive:
                 if len(voiceQueue) > 0 and in_service_package is not None and in_service_package.type == PackageType.DATA_PACKAGE:
                     totalDataProcessingTimePerRound[currentRound] += (t - in_service_package.startServingTime)
+                    ProcessingTimeSamplePerRound[currentRound].append(t - in_service_package.startServingTime)
                     pkg = Package(PackageType.DATA_PACKAGE, 0, t + 0.000256, 0)
                     pkg.size = in_service_package.size # - (( t - in_service_package.startServingTime ) * constants.CHANNEL_SIZE)
                     dataQueue.insert(0, pkg)
@@ -236,13 +255,21 @@ class Simulator:
         # GENERATE STATISTICS
 
         finalW1 = 0
+        finalStdW1 = 0
         finalW2 = 0
+        finalStdW2 = 0
         finalX1 = 0
+        finalStdX1 = 0
         finalX2 = 0
+        finalStdX2 = 0
         finalT1 = 0
+        finalStdT1 = 0
         finalT2 = 0
+        finalStdT2 = 0
         finalNq1 = 0
+        finalStdNq1 = 0
         finalNq2 = 0
+        finalStdNq2 = 0
 
         delta = 0
 
@@ -274,13 +301,25 @@ class Simulator:
             plt.savefig('images/W2-'+str(self.utilization)+'.png')
             plt.clf()
 
+
+        stdW1perRound =[]
+        stdW2perRound =[]
+        stdX1perRound =[]
+        stdX2perRound =[]
+        stdT1perRound =[]
+        stdT2perRound =[]
+        stdNq1perRound =[]
+        stdNq2perRound =[]
+
         for i in range(numberOfRounds):
             W1 = totalDataWaitingTimePerRound[i] / dataPackagesProcessedPerRound[i]
             X1 = totalDataProcessingTimePerRound[i] / dataPackagesProcessedPerRound[i]
             T1 = X1 + W1
+            stdT1perRound.append(T1)
             W2 = totalVoiceWaitingTimePerRound[i] / voicePackagesProcessedPerRound[i]
             X2 = X2PerRound[i]
             T2 = X2 + W2
+            stdT2perRound.append(T2)
             #print('Round ' + str(i) + ':\nW1: ' + str(W1) + '\tX1: ' + str(X1) + '\tT1: ' + str(T1))
             #print('W2: ' + str(W2) + '\tX2: ' + str(X2) + '\tT2: ' + str(T2) + '\n')
 
@@ -302,27 +341,66 @@ class Simulator:
 
 
             finalW1 += W1 / numberOfRounds
+            stdW1perRound.append(std(WaitingTimeSamplePerRound[i]))
+
             finalW2 += W2 / numberOfRounds
+            stdW2perRound.append(std(VoiceWaitingTimeSamplePerRound[i]))
+
             finalX1 += X1 / numberOfRounds
+            stdX1perRound.append(std(ProcessingTimeSamplePerRound[i]))
+
             finalX2 += X2 / numberOfRounds
+
             finalT1 += T1 / numberOfRounds
+
             finalT2 += T2 / numberOfRounds
-            finalNq1 += dataPackagesProcessedPerRound[i] / numberOfRounds
+            finalNq1 += dataPackagesProcessedPerRound[i] / numberOfRounds            
             finalNq2 += voicePackagesProcessedPerRound[i] / numberOfRounds
             dt /= (constants.M1 * numberOfRounds)
             dt2 /= (constants.M2/(constants.M3 * self.utilization) * numberOfRounds)
 
+        
+
         finalNq1 = arrivalDataRate * finalW1
         finalNq2 = constants.VOICE_PACKAGE_ARRIVAL_RATE * finalW2
+        
+
+        finalStdW1 = std(stdW1perRound)
+        finalStdW2 = std(stdW2perRound)
+        finalStdX1 = std(stdX1perRound)
+        finalStdX2 = std(X2PerRound)
+
+        finalStdNq1 = std(dataPackagesProcessedPerRound)
+        finalStdNq2 = std(voicePackagesProcessedPerRound)
+        
+        finalStdT1 = std(stdT1perRound)
+        
+        finalStdT2 = std(stdT2perRound)
 
         print('E[W1]: ' + str(finalW1))
+        print('Std[W1]: ' + str(finalStdW1))
+        print('IC para W1: ' + str(stats.norm.interval(0.9,loc=finalW1,scale=finalStdW1)))
         print('E[W2]: ' + str(finalW2))
+        print('Std[W2]: ' + str(finalStdW2))
+        print('IC para W2: ' + str(stats.norm.interval(0.9,loc=finalW2,scale=finalStdW2)))
         print('E[X1]: ' + str(finalX1))
+        print('Std[X1]: ' + str(finalStdX1))
+        print('IC para X1: ' + str(stats.norm.interval(0.9,loc=finalX1,scale=finalStdX1)))
         print('E[X2]: ' + str(finalX2))
+        print('Std[X2]: ' + str(finalStdX2))
+        print('IC para X2: ' + str(stats.norm.interval(0.9,loc=finalX2,scale=finalStdX2)))
         print('E[T1]: ' + str(finalT1))
+        print('Std[T1]: ' + str(finalStdT1))
+        print('IC para T1: ' + str(stats.norm.interval(0.9,loc=finalT1,scale=finalStdT1)))
         print('E[T2]: ' + str(finalT2))
+        print('Std[T2]: ' + str(finalStdT2))
+        print('IC para T2: ' + str(stats.norm.interval(0.9,loc=finalT2,scale=finalStdT2)))
         print('E[Nq1]: ' + str(finalNq1))
+        print('Std[Nq1]: ' + str(finalStdNq1))
+        print('IC para Nq1: ' + str(stats.norm.interval(0.9,loc=finalNq1,scale=finalStdNq1)))
         print('E[Nq2]: ' + str(finalNq2))
+        print('Std[Nq2]: ' + str(finalStdNq2))
+        print('IC para Nq2: ' + str(stats.norm.interval(0.9,loc=finalNq2,scale=finalStdNq2)))
         print('E[Delta]: ' + str(dt))
         print('V[Delta]: ' + str(dt2))
 
